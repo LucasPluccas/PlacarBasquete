@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Placar Profissional de Basquete</title>
+    <style>
+      body {
+        font-family: Arial, sans-serif;
+        background-color: #121212;
+        color: white;
+        margin: 0;
+        padding: 0;
+      }
+      h1 {
+        text-align: center;
+        margin-top: 20px;
+      }
+      .setup {
+        background: #1e1e1e;
+        padding: 20px;
+        margin: 20px auto;
+        width: 450px;
+        border-radius: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+      }
+      .setup input {
+        width: 100%;
+        padding: 5px;
+        margin-bottom: 10px;
+        border-radius: 5px;
+        border: none;
+      }
+      .setup button {
+        background: #ff9800;
+        border: none;
+        padding: 10px;
+        width: 100%;
+        border-radius: 10px;
+        font-size: 16px;
+        cursor: pointer;
+        color: white;
+      }
+      .logos {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 10px;
+      }
+      .logos img {
+        width: 60px;
+        height: 60px;
+        border-radius: 8px;
+        cursor: pointer;
+        border: 2px solid transparent;
+        object-fit: cover;
+      }
+      .logos img.selected {
+        border: 2px solid #ff9800;
+      }
+      .container {
+        display: flex;
+        justify-content: center;
+        gap: 30px;
+        flex-wrap: wrap;
+        margin-top: 20px;
+      }
+      .team {
+        background: #1e1e1e;
+        padding: 20px;
+        border-radius: 15px;
+        width: 350px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+      }
+      .team h2 {
+        text-align: center;
+        font-size: 24px;
+        margin-bottom: 10px;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+      }
+      .team h2 img {
+        width: 40px;
+        height: 40px;
+        border-radius: 50%;
+        object-fit: cover;
+      }
+      .score {
+        font-size: 36px;
+        text-align: center;
+        margin-bottom: 20px;
+      }
+      .player {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin: 10px 0;
+        background: #2a2a2a;
+        padding: 10px;
+        border-radius: 10px;
+      }
+      .player-name {
+        flex: 1;
+      }
+      .buttons button {
+        margin: 0 2px;
+        padding: 5px 10px;
+        border: none;
+        border-radius: 5px;
+        cursor: pointer;
+        color: white;
+      }
+      #finishBtn {
+        background: #d32f2f;
+        border: none;
+        padding: 10px;
+        width: 200px;
+        border-radius: 10px;
+        font-size: 16px;
+        cursor: pointer;
+        color: white;
+        margin: 20px auto;
+        display: block;
+      }
+      .results {
+        background: #1e1e1e;
+        padding: 20px;
+        margin: 20px auto;
+        width: 500px;
+        border-radius: 15px;
+        box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+        display: none;
+      }
+      .timer {
+        text-align: center;
+        font-size: 28px;
+        margin-top: 10px;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>🏀 Placar Profissional de Basquete</h1>
+
+    <div class="setup">
+      <h3>Configuração dos Times</h3>
+      <label>Tempo da partida (minutos):</label>
+      <input id="gameTime" type="number" min="1" max="60" value="10" />
+
+      <input id="team1Name" placeholder="Nome do Time 1" />
+      <div id="team1Logos" class="logos"></div>
+      <div id="team1Players"></div>
+
+      <input id="team2Name" placeholder="Nome do Time 2" />
+      <div id="team2Logos" class="logos"></div>
+      <div id="team2Players"></div>
+
+      <button onclick="startGame()">Iniciar Partida</button>
+    </div>
+
+    <div class="timer" id="timer" style="display: none">00:00</div>
+
+    <div class="container" id="scoreboard" style="display: none">
+      <div class="team" id="team1">
+        <h2 id="name1"></h2>
+        <div class="score" id="score1">0</div>
+        <div id="players1"></div>
+      </div>
+      <div class="team" id="team2">
+        <h2 id="name2"></h2>
+        <div class="score" id="score2">0</div>
+        <div id="players2"></div>
+      </div>
+    </div>
+
+    <button id="finishBtn" style="display: none" onclick="finishGame()">
+      Finalizar Partida
+    </button>
+    <div id="results" class="results"></div>
+
+    <script>
+      let teamScores = [0, 0],
+        playersData = [[], []],
+        selectedLogos = [null, null],
+        timerInterval,
+        timeRemaining = 0;
+      const fixedLogos = [
+        "logos/logo1.png",
+        "logos/logo2.png",
+        "logos/logo3.png",
+        "logos/logo4.png",
+      ];
+
+      // Cria inputs dos jogadores
+      function createPlayerInputs(teamDiv, prefix) {
+        for (let i = 1; i <= 5; i++) {
+          let input = document.createElement("input");
+          input.placeholder = `Jogador ${i} (${prefix})`;
+          input.id = `${prefix}player${i}`;
+          teamDiv.appendChild(input);
+        }
+      }
+      createPlayerInputs(document.getElementById("team1Players"), "t1");
+      createPlayerInputs(document.getElementById("team2Players"), "t2");
+
+      // Carrega logos fixos para seleção
+      function loadLogos(divId, teamIndex) {
+        const container = document.getElementById(divId);
+        fixedLogos.forEach((logo) => {
+          const img = document.createElement("img");
+          img.src = logo;
+          img.onclick = () => {
+            selectedLogos[teamIndex] = img.src;
+            Array.from(container.children).forEach((c) =>
+              c.classList.remove("selected")
+            );
+            img.classList.add("selected");
+          };
+          container.appendChild(img);
+        });
+      }
+      loadLogos("team1Logos", 0);
+      loadLogos("team2Logos", 1);
+
+      function startGame() {
+        let t1Name = document.getElementById("team1Name").value || "Time 1";
+        let t2Name = document.getElementById("team2Name").value || "Time 2";
+        let gameMinutes =
+          parseInt(document.getElementById("gameTime").value) || 10;
+        timeRemaining = gameMinutes * 60;
+
+        document.getElementById("name1").innerHTML = `${
+          selectedLogos[0] ? `<img src="${selectedLogos[0]}">` : ""
+        } ${t1Name}`;
+        document.getElementById("name2").innerHTML = `${
+          selectedLogos[1] ? `<img src="${selectedLogos[1]}">` : ""
+        } ${t2Name}`;
+
+        playersData = [[], []];
+        teamScores = [0, 0];
+        for (let i = 1; i <= 5; i++) {
+          playersData[0].push({
+            name:
+              document.getElementById(`t1player${i}`).value || `Jogador ${i}`,
+            points: 0,
+          });
+          playersData[1].push({
+            name:
+              document.getElementById(`t2player${i}`).value || `Jogador ${i}`,
+            points: 0,
+          });
+        }
+
+        document.getElementById("players1").innerHTML = "";
+        document.getElementById("players2").innerHTML = "";
+        playersData[0].forEach((p, i) =>
+          document
+            .getElementById("players1")
+            .appendChild(createPlayerRow(0, i, p.name))
+        );
+        playersData[1].forEach((p, i) =>
+          document
+            .getElementById("players2")
+            .appendChild(createPlayerRow(1, i, p.name))
+        );
+
+        document.querySelector(".setup").style.display = "none";
+        document.getElementById("scoreboard").style.display = "flex";
+        document.getElementById("finishBtn").style.display = "block";
+        document.getElementById("timer").style.display = "block";
+        startTimer();
+      }
+
+      function createPlayerRow(teamIndex, playerIndex, playerName) {
+        let div = document.createElement("div");
+        div.className = "player";
+        let nameDiv = document.createElement("div");
+        nameDiv.className = "player-name";
+        nameDiv.innerText = `${playerName} (0 pts)`;
+        nameDiv.id = `player${teamIndex}-${playerIndex}`;
+        let buttonsDiv = document.createElement("div");
+        buttonsDiv.className = "buttons";
+        [1, 2, 3].forEach((points) => {
+          let btn = document.createElement("button");
+          btn.innerText = `+${points}`;
+          btn.className = `btn${points}`;
+          btn.style.backgroundColor = teamIndex === 0 ? "#1E90FF" : "#FF4500";
+          btn.onclick = () => addPoints(teamIndex, playerIndex, points);
+          buttonsDiv.appendChild(btn);
+        });
+        div.appendChild(nameDiv);
+        div.appendChild(buttonsDiv);
+        return div;
+      }
+
+      function addPoints(teamIndex, playerIndex, points) {
+        teamScores[teamIndex] += points;
+        playersData[teamIndex][playerIndex].points += points;
+        document.getElementById(`score${teamIndex + 1}`).innerText =
+          teamScores[teamIndex];
+        document.getElementById(
+          `player${teamIndex}-${playerIndex}`
+        ).innerText = `${playersData[teamIndex][playerIndex].name} (${playersData[teamIndex][playerIndex].points} pts)`;
+      }
+
+      function startTimer() {
+        updateTimerDisplay();
+        timerInterval = setInterval(() => {
+          timeRemaining--;
+          updateTimerDisplay();
+          if (timeRemaining <= 0) {
+            clearInterval(timerInterval);
+            finishGame();
+          }
+        }, 1000);
+      }
+
+      function updateTimerDisplay() {
+        let m = Math.floor(timeRemaining / 60);
+        let s = timeRemaining % 60;
+        document.getElementById("timer").innerText = `${String(m).padStart(
+          2,
+          "0"
+        )}:${String(s).padStart(2, "0")}`;
+      }
+
+      function finishGame() {
+        clearInterval(timerInterval);
+        let resultDiv = document.getElementById("results");
+        let t1Name = document.getElementById("team1Name").value || "Time 1";
+        let t2Name = document.getElementById("team2Name").value || "Time 2";
+        resultDiv.innerHTML = `<h2>🏁 Resultado Final</h2>`;
+        resultDiv.innerHTML += `<p><strong><img src="${selectedLogos[0]}" style="width:30px;height:30px;border-radius:50%;"> ${t1Name}:</strong> ${teamScores[0]} pontos</p>`;
+        resultDiv.innerHTML += `<p><strong><img src="${selectedLogos[1]}" style="width:30px;height:30px;border-radius:50%;"> ${t2Name}:</strong> ${teamScores[1]} pontos</p>`;
+        let winner = "";
+        if (teamScores[0] > teamScores[1]) winner = t1Name;
+        else if (teamScores[1] > teamScores[0]) winner = t2Name;
+        else winner = "Empate";
+        resultDiv.innerHTML += `<h3>🏆 Vencedor: ${winner}</h3>`;
+        resultDiv.innerHTML += `<h4>Estatísticas dos Jogadores</h4>`;
+        resultDiv.innerHTML +=
+          `<strong>${t1Name}:</strong><ul>` +
+          playersData[0]
+            .map((p) => `<li>${p.name}: ${p.points} pts</li>`)
+            .join("") +
+          `</ul>`;
+        resultDiv.innerHTML +=
+          `<strong>${t2Name}:</strong><ul>` +
+          playersData[1]
+            .map((p) => `<li>${p.name}: ${p.points} pts</li>`)
+            .join("") +
+          `</ul>`;
+        resultDiv.style.display = "block";
+        document.getElementById("finishBtn").style.display = "none";
+        document.getElementById("scoreboard").style.display = "none";
+        document.getElementById("timer").style.display = "none";
+      }
+    </script>
+  </body>
+</html>
